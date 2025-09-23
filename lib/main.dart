@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'home.dart';
+import 'cart.dart';
+import 'invoice.dart';
 
 void main() {
   runApp(const NovaNightApp());
@@ -86,10 +89,12 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.nightlife, size: 80, color: Colors.deepPurpleAccent),
+              const Icon(Icons.nightlife,
+                  size: 80, color: Colors.deepPurpleAccent),
               const SizedBox(height: 20),
               const Text("NovaNight Login",
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+                  style:
+                      TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
               const SizedBox(height: 40),
               TextField(
                 controller: _userController,
@@ -263,142 +268,9 @@ class _MainShellState extends State<MainShell> {
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.store), label: "Productos"),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: "Carrito"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_cart), label: "Carrito"),
         ],
-      ),
-    );
-  }
-}
-
-// ---------------- PRODUCTOS ------------------
-class HomeScreen extends StatelessWidget {
-  final Function(Map<String, dynamic>) onAddToCart;
-  const HomeScreen({super.key, required this.onAddToCart});
-
-  final List<Map<String, dynamic>> products = const [
-    {"name": "Auriculares Gamer", "price": 150000, "image": "🎧"},
-    {"name": "Teclado Mecánico", "price": 250000, "image": "⌨️"},
-    {"name": "Mouse RGB", "price": 80000, "image": "🖱️"},
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: products.length,
-      itemBuilder: (context, index) {
-        final product = products[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 10),
-          color: Colors.deepPurple.shade700,
-          child: ListTile(
-            leading: Text(product["image"], style: const TextStyle(fontSize: 32)),
-            title: Text(product["name"], style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            subtitle: Text("\$${product["price"]}"),
-            trailing: ElevatedButton(
-              onPressed: () => onAddToCart(product),
-              child: const Text("Agregar"),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ---------------- CARRITO ------------------
-class CartPage extends StatelessWidget {
-  final List<Map<String, dynamic>> cart;
-  const CartPage({super.key, required this.cart});
-
-  double get total => cart.fold(0, (sum, item) => sum + (item['price'] as int));
-
-  void goToInvoice(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => InvoicePage(cart: cart, total: total),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (cart.isEmpty) {
-      return const Center(
-        child: Text("Tu carrito está vacío 🛒",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(title: const Text("Carrito"), backgroundColor: Colors.deepPurple),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              itemCount: cart.length,
-              itemBuilder: (context, index) {
-                final item = cart[index];
-                return ListTile(
-                  title: Text(item['name']),
-                  subtitle: Text("\$${item['price']}"),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: ElevatedButton(
-              onPressed: () => goToInvoice(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text("Comprar"),
-            ),
-          )
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------- FACTURA ------------------
-class InvoicePage extends StatelessWidget {
-  final List<Map<String, dynamic>> cart;
-  final double total;
-  const InvoicePage({super.key, required this.cart, required this.total});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Factura"), backgroundColor: Colors.deepPurple),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("Detalles de la factura",
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            Expanded(
-              child: ListView.builder(
-                itemCount: cart.length,
-                itemBuilder: (context, index) {
-                  final item = cart[index];
-                  return ListTile(
-                    title: Text(item['name']),
-                    trailing: Text("\$${item['price']}"),
-                  );
-                },
-              ),
-            ),
-            const Divider(),
-            Text("Total: \$${total.toStringAsFixed(0)}",
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          ],
-        ),
       ),
     );
   }

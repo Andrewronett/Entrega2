@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'home.dart';
 import 'cart.dart';
 import 'invoice.dart';
+import 'services/auth_service.dart'; // ✅ Servicio real de autenticación
 
 void main() {
   runApp(const NovaNightApp());
@@ -15,6 +16,7 @@ class NovaNightApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'NovaNight Store',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         primaryColor: Colors.deepPurpleAccent,
         scaffoldBackgroundColor: Colors.black,
@@ -24,23 +26,48 @@ class NovaNightApp extends StatelessWidget {
           centerTitle: true,
         ),
       ),
-      home: const LoginPage(), // Vista inicial = Login
+      home: const AuthCheck(), // 👈 Nuevo widget que revisa si ya hay sesión guardada
     );
   }
 }
 
-// ---------------- DATOS DE USUARIOS ------------------
-class UserRepository {
-  static final Map<String, String> _users = {}; // {usuario: contraseña}
+// ---------------- AUTH CHECK ------------------
+// Este widget decide si mostrar Login o la App directamente según si hay token guardado
+class AuthCheck extends StatefulWidget {
+  const AuthCheck({super.key});
 
-  static bool register(String user, String pass) {
-    if (_users.containsKey(user)) return false; // ya existe
-    _users[user] = pass;
-    return true;
+  @override
+  State<AuthCheck> createState() => _AuthCheckState();
+}
+
+class _AuthCheckState extends State<AuthCheck> {
+  final AuthService _authService = AuthService();
+  bool _checking = true;
+  bool _loggedIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _verifySession();
   }
 
-  static bool login(String user, String pass) {
-    return _users[user] == pass;
+  Future<void> _verifySession() async {
+    final token = await _authService.getToken();
+    setState(() {
+      _loggedIn = token != null;
+      _checking = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_checking) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return _loggedIn ? const MainShell() : const LoginPage();
   }
 }
 
@@ -55,19 +82,38 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
+  bool _loading = false;
 
-  void _login() {
+  Future<void> _login() async {
+    setState(() => _loading = true);
+
     String user = _userController.text.trim();
     String pass = _passwordController.text.trim();
 
-    if (UserRepository.login(user, pass)) {
+    if (user.isEmpty || pass.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Por favor llena todos los campos")),
+      );
+      setState(() => _loading = false);
+      return;
+    }
+
+    final token = await _authService.login(user, pass);
+
+    setState(() => _loading = false);
+
+    if (token != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Inicio de sesión exitoso ✅")),
+      );
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const MainShell()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Usuario o contraseña incorrectos")),
+        const SnackBar(content: Text("Usuario o contraseña incorrectos ❌")),
       );
     }
   }
@@ -93,8 +139,7 @@ class _LoginPageState extends State<LoginPage> {
                   size: 80, color: Colors.deepPurpleAccent),
               const SizedBox(height: 20),
               const Text("NovaNight Login",
-                  style:
-                      TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
               const SizedBox(height: 40),
               TextField(
                 controller: _userController,
@@ -121,18 +166,20 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               const SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: _login,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurpleAccent,
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-                child: const Text("Ingresar"),
-              ),
+              _loading
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton(
+                      onPressed: _login,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurpleAccent,
+                        minimumSize: const Size(double.infinity, 50),
+                      ),
+                      child: const Text("Ingresar"),
+                    ),
               TextButton(
                 onPressed: _goToRegister,
                 child: const Text("¿No tienes cuenta? Regístrate"),
-              )
+              ),
             ],
           ),
         ),
@@ -152,8 +199,12 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
+  bool _loading = false;
 
-  void _register() {
+  Future<void> _register() async {
+    setState(() => _loading = true);
+
     String user = _userController.text.trim();
     String pass = _passwordController.text.trim();
 
@@ -161,17 +212,22 @@ class _RegisterPageState extends State<RegisterPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Por favor llena todos los campos")),
       );
+      setState(() => _loading = false);
       return;
     }
 
-    if (UserRepository.register(user, pass)) {
+    final success = await _authService.register(user, pass);
+    setState(() => _loading = false);
+
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Usuario registrado con éxito")),
+        const SnackBar(content: Text("Usuario registrado con éxito ✅")),
       );
-      Navigator.pop(context); // volver al login
+      Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("El usuario ya existe")),
+        const SnackBar(
+            content: Text("El usuario ya existe o hubo un error ❌")),
       );
     }
   }
@@ -210,14 +266,16 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ),
             const SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: _register,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: const Text("Registrar"),
-            ),
+            _loading
+                ? const CircularProgressIndicator()
+                : ElevatedButton(
+                    onPressed: _register,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: const Text("Registrar"),
+                  ),
           ],
         ),
       ),
@@ -236,6 +294,7 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
   final List<Map<String, dynamic>> _cart = [];
+  final AuthService _authService = AuthService(); // ✅ Agregado para cerrar sesión
 
   void _addToCart(Map<String, dynamic> product) {
     setState(() {
@@ -243,6 +302,15 @@ class _MainShellState extends State<MainShell> {
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("${product["name"]} agregado al carrito")),
+    );
+  }
+
+  void _logout() async {
+    await _authService.logout();
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+      (route) => false,
     );
   }
 
@@ -254,7 +322,15 @@ class _MainShellState extends State<MainShell> {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text("NovaNight")),
+      appBar: AppBar(
+        title: const Text("NovaNight"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+          )
+        ],
+      ),
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,

@@ -135,8 +135,13 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.nightlife,
-                  size: 80, color: Colors.deepPurpleAccent),
+              // Logo: usa el asset novanightlogo.jfif
+              Image.asset(
+                'assets/novanightlogo.jfif',
+                width: 120,
+                height: 120,
+                fit: BoxFit.contain,
+              ),
               const SizedBox(height: 20),
               const Text("NovaNight Login",
                   style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),

@@ -27,4 +27,6 @@ flutter:
 
   assets:
     - assets/audio/ # Asegúrate de crear esta carpeta y agregar los archivos mp3 necesarios
+    - assets/novanightlogo.jfif
+    - assets/images/
 
